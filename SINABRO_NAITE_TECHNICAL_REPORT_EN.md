@@ -39,7 +39,7 @@ The initial release track covers Stages A through H:
 
 Stages I through K extend the system into read-only mainnet measurement, public open-source readiness, controlled self-improvement, and later model/GPU promotion. They are not required for the first working open-source release.
 
-The plan intentionally excludes several tempting paths from the initial release surface. There is no paid skill marketplace, no unapproved chain write, no silent provider fallback, no Solana/Anchor tool execution, and no training on private user data by default.
+The plan keeps the initial release surface narrow: no unapproved chain write, no silent provider fallback, and no training on private user data by default.
 
 ## 3. Design Principles
 
@@ -164,7 +164,7 @@ The memory engine later adds importance scoring, compaction, deletion semantics,
 
 ## 8. Skills
 
-The initial skill system is adoption-first, not commerce-first. The initial release scope does not include `skill buy`, checkout, paid licenses, refunds, royalties, or revenue sharing. A later marketplace can be proposed only after the open registry has real usage.
+The initial skill system is adoption-first. It focuses on discovery, inspection, recommendation, installation, provenance, compatibility, and verified use before adding more complex distribution mechanics.
 
 The planned skill commands are:
 
@@ -295,7 +295,7 @@ The staged roadmap leaves a working artifact at each step.
 
 Sinabro and Naite compound in ways a plain chat interface does not.
 
-The agent keeps state outside the model. Memory, skills, evidence, and approval records survive provider changes and model upgrades. The training system learns from complete work trajectories instead of isolated answers. The safety model is enforced by the runtime rather than by prompt text alone. The skill registry can grow without requiring an early payment market. External frontier models can still be used, but their outputs pass through the same trace, privacy, and approval boundaries.
+The agent keeps state outside the model. Memory, skills, evidence, and approval records survive provider changes and model upgrades. The training system learns from complete work trajectories instead of isolated answers. The safety model is enforced by the runtime rather than by prompt text alone. The skill registry can grow through verified discovery and installation. External frontier models can still be used, but their outputs pass through the same trace, privacy, and approval boundaries.
 
 This makes the project broader than a Web3 assistant and more specific than a general chatbot. Its first deep specialization is Rust, Move, Sui, and Walrus, but the underlying loop is a general coding loop: plan, implement, test, prove, measure, review, record, and learn.
 
@@ -304,8 +304,6 @@ This makes the project broader than a Web3 assistant and more specific than a ge
 The design has clear limits.
 
 - The report describes a staged design, not a completed production deployment.
-- The initial release scope does not include Solana or Anchor execution paths.
-- The initial release scope does not include paid skill-market execution.
 - Naite is not assumed to outperform frontier models at launch.
 - Walrus/Sui memory ownership, Gas Station operation, vLLM serving, and mainnet measurement require evidence before public claims.
 - Self-improvement does not imply permission escalation. A better model does not get broader authority.
