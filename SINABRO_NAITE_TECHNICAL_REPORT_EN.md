@@ -77,6 +77,7 @@ User
        - runtime supervisor
        - tool dispatcher
        - provider and model router
+       - provider and tool adapter boundary
        - memory engine
        - skill runtime
        - wallet and gas policy
@@ -96,6 +97,19 @@ User
 ```
 
 The router can call external providers or local models, but tool authority remains outside the model. A model may propose a command, web search, memory write, skill install, or transaction. Sinabro decides whether the proposal is executable.
+
+### 4.1 Tool and Provider Adapter Layer
+
+Sinabro is designed to use the external AI ecosystem without surrendering its safety model. Python tools, MCP servers, CLI binaries, HTTP or FastAPI services, and WASM skills are not reimplemented in Rust just to be trusted. They are wrapped behind an adapter boundary and normalized into the same command, capability, approval, sandbox, and evidence flow.
+
+The adapter layer has four parts:
+
+- **LLM Provider Abstraction.** OpenAI, Anthropic, Gemini, local Naite, and vLLM endpoints are called through one provider interface. No-silent-fallback policy, cost estimates, latency budgets, model identity, privacy-boundary changes, and route traces are attached at this layer.
+- **Tool Adapter Abstraction.** Python tools, MCP servers, CLI binaries, HTTP services, and WASM skills are normalized into a common `ToolCall` and `ToolResult` shape. Capability diffs, approval requirements, sandbox tier, revocation, and execution evidence are checked before a tool can run.
+- **Message and Command Envelope.** CLI, TUI, Telegram, future mobile clients, and APIs use the same `CommandEnvelope` and `MessageEnvelope` semantics. Commands such as `/kill`, `/approve`, and `task resume` should mean the same thing regardless of where they originate.
+- **Evidence and Trace Layer.** Provider choice, tool execution, cost, latency, output hashes, failures, and approval receipts are recorded. Without this layer, an external Python tool or hosted model could spend money, mutate files, or change model routes without leaving a reproducible trail.
+
+This boundary is a practical integration strategy. Sinabro can call frontier models and popular Python tooling, but the model and the tool remain proposal sources, not authorities.
 
 ## 5. The Atom Protocol
 
@@ -118,10 +132,10 @@ The protocol is deliberately narrow. It prevents broad, unfalsifiable work from 
 Each atom writes a sidecar directory under `ops/training/{phase_or_stage}/atom_###/`.
 
 ```text
-input_context.md
+input_context.jsonl
 action_trace.jsonl
 command_manifest.json
-terminal_redacted.log
+terminal_redacted.jsonl
 env_lock.json
 artifact_hashes.json
 code_diff.patch
@@ -132,7 +146,7 @@ gate_results.json
 review_5pack.json
 deny_audit.json
 redteam_decision.json
-human_review.json
+human_review.jsonl
 approval_events.jsonl
 privacy_report.json
 sft_chat.jsonl
@@ -145,7 +159,7 @@ These files form an `AtomDietRecord`. The sidecar is not an afterthought; it is 
 
 - `review_5pack.json` records performance, security, chain, agent-token budget, and developer-experience review.
 - `deny_audit.json` records dependency, license, advisory, ban, and source checks.
-- `terminal_redacted.log` records command output without leaking secrets.
+- `terminal_redacted.jsonl` records command output without leaking secrets.
 - `reward_labels.json` distinguishes verified success from self-report, infra failure, policy denial, and unsafe behavior.
 
 Only data that passes rights, redaction, and verification gates can become Naite training data. Private memory, secrets, provider bodies, sponsor keys, payment material, and rights-unclear web content are excluded.
@@ -286,7 +300,7 @@ The staged roadmap leaves a working artifact at each step.
 - Stage C: GA hardening, gas trace harness, mainnet gate, key isolation.
 - Stage D: skill runtime, open registry, provenance, install receipts, memory intelligence.
 - Stage E: AtomDietRecord builder, redaction, rights checks, reward firewall, training unlock.
-- Stage F: CLI cockpit, provider/tool/web/skill/memory/wallet/gas/train/eval controls.
+- Stage F: CLI cockpit, provider/tool adapter, web/skill/memory/wallet/gas/train/eval controls.
 - Stage G: first Naite SFT pass and evaluation on A100.
 - Stage H: vLLM serving, local model router, no-silent-fallback proof, CLI/Telegram sync.
 - Stage I: read-only mainnet measurement for gas, cycle, and security telemetry.
