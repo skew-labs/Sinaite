@@ -8,6 +8,8 @@
 
 Sinabro is a local-first coding agent that runs close to a developer's workspace, tools, credentials, memory, and approval boundaries. Naite is the project coding model trained from the evidence Sinabro produces. The two systems are deliberately separated: Sinabro is the control plane, and Naite is an accelerator that can be replaced, upgraded, or bypassed without changing the safety model.
 
+Sinabro gives developers ownership over the memory of their work. Decisions, failed attempts, approvals, tool results, and verified outcomes should remain portable across models instead of disappearing with a chat session.
+
 The central claim of this report is that a capable coding agent should not be judged only by model benchmarks or chat quality. It should be judged by the quality of the loop it operates: reading a codebase, reducing a task into atomic work units, implementing changes, running tests and static analysis, collecting proof, refusing unsafe actions, preserving user-owned memory, and turning verified work into training data. Sinabro is the agent layer for that loop. Naite is trained only from data that survives the loop.
 
 The current design targets Rust, Move, Sui, Walrus, local command execution, web research with citations, skill discovery, wallet/gas policy, and long-context coding workflows. The system is open-source by default, conservative by default, and opt-in for any learning artifact that leaves a user's machine.
