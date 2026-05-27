@@ -175,6 +175,10 @@ This design is intended to give users several concrete properties:
 4. Training rights are separate from storage rights.
 5. Memory can be audited after a dispute.
 
+Storage is replaceable; ownership is not. Walrus is the first Sui-native primary backend, but Sinabro's memory layer is designed to support local encrypted storage, Walrus, Filecoin/IPFS, Arweave, and future archival backends through the same `StorageBackend` interface. The invariant is that no storage provider becomes the owner of memory.
+
+The memory system also treats compression as part of the ownership experience. Long-term memory is only useful if it can be searched, summarized, paged, cached, replayed, and served quickly. Techniques such as prefix cache reuse, KV cache policy, quantized serving, and future TurboQuant-style compression are evaluated as serving optimizations, not as substitutes for verifiable memory roots.
+
 ## 8. Adapter Boundaries
 
 Sinabro should use the external AI ecosystem without surrendering its safety model.
