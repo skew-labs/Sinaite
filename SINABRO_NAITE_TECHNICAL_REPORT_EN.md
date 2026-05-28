@@ -2,7 +2,7 @@
 
 ## Sinabro: A Local-First Coding Agent with User-Owned Memory and Evidence-Gated Model Improvement
 
-Draft v0.3 | May 28, 2026
+Draft v0.4 | May 28, 2026
 
 ## Abstract
 
@@ -16,7 +16,7 @@ This report describes the system design, data pipeline, safety invariants, servi
 
 Open-source language models improved rapidly by making model weights, training recipes, and evaluation results inspectable. Coding agents need the same discipline at the systems layer. A patch is not enough. A chat log is not enough. A model saying "I fixed it" is not evidence. The missing unit is a verifiable work trajectory.
 
-Sinaite follows a DeepSeek-style engineering posture: fewer slogans, more measured efficiency. We optimize the loop before optimizing the narrative. Every useful improvement should either reduce cost, reduce latency, preserve safety, improve verified pass rate, or produce better training data. If it does none of these, it is probably decoration.
+Sinaite follows a measured engineering posture: fewer slogans, more evidence. We optimize the loop before optimizing the narrative. Every useful improvement should either reduce cost, reduce latency, preserve safety, improve verified pass rate, or produce better training data. If it does none of these, it is probably decoration.
 
 The central thesis is:
 
@@ -26,7 +26,7 @@ Sinabro therefore owns the runtime boundary. It decides what tools can run, what
 
 ## 2. Contributions
 
-This report describes seven contributions.
+This report describes eight contributions.
 
 1. **Atom Protocol.** A staged development protocol in which each work unit has one canonical output, explicit reuse constraints, required gates, and a closed evidence sidecar.
 2. **AtomDiet.** A training-data pipeline that converts verified software work into SFT, preference, reward, and evaluation records while rejecting self-reported success.
@@ -34,7 +34,8 @@ This report describes seven contributions.
 4. **Sinabro Runtime.** A local-first Rust agent control plane with CLI/TUI/Telegram interfaces, provider routing, tool adapters, skill registry, wallet/gas policy, task inbox, checkpoint/rollback, and audit trails.
 5. **Safety by Construction.** No silent fallback, no silent side effects, no hidden permission escalation, no training on private data by default, and no gas sponsorship based on endpoint secrecy.
 6. **Evidence-Backed Optimization.** Trajectory health, route state, prompt-cache boundaries, specialized token compression, and A/B scorecards are recorded as typed evidence rather than prompt-only guidance.
-7. **Naite Training and Serving Plan.** A staged 14B QLoRA/LoRA SFT track followed by strict evaluation, vLLM serving, no-silent-fallback routing, and larger-model promotion only after measured gains.
+7. **Compute as Curriculum.** A Naite Didactica Engine that turns evidence sidecars into mastery estimates, spaced recall queues, transfer probes, validity checks, and compute-learning-gain ledgers before spending additional GPU time.
+8. **Naite Training and Serving Plan.** A staged QLoRA/LoRA SFT track on a license-permissive 14B coding base, followed by strict evaluation, vLLM serving, no-silent-fallback routing, and larger-model promotion only after measured gains.
 
 ## 3. System Overview
 
@@ -170,7 +171,66 @@ The resulting dataset can produce:
 - Evaluation records from held-out gates.
 - Trajectory-health labels for loop, drift, contradiction, and verification-skip failures.
 
-## 7. User-Owned Memory
+## 7. Compute as Curriculum
+
+Naite is not meant to improve by eating more data in dataset order. The training loop treats compute as a scarce instructional resource. Additional GPU time is spent only when the system can explain what concept is being trained, why the model has not mastered it, how the concept transfers to unseen work, and whether the measured gain is worth the cost.
+
+This layer is called the Naite Didactica Engine. It borrows from a long educational tradition without pretending that human pedagogy transfers directly to machines. The useful abstraction is not classroom metaphor. It is control theory for learning: prerequisites, mastery thresholds, delayed recall, desirable difficulty, transfer, validity, and metacognitive uncertainty.
+
+Stage E emits a `DidacticConceptMap` from verified AtomDiet records:
+
+```text
+DidacticConceptMap
+  concept
+  prerequisite
+  failure_cause
+  gate_axis
+  domain_axis
+  transfer_probe
+  evidence_hash
+```
+
+Stage G uses that map to schedule training:
+
+```text
+MasteryVector
+  per-concept mastery estimate
+
+SpacedRecallQueue
+  delayed recall probes and due steps
+
+DesirableDifficultyMixer
+  interleaving, perturbation, bilingual variants, failure contrast, and context-length mix
+
+TransferProbe
+  unseen repository, unseen atom shape, invariant axis, proof axis, and gas axis
+
+TransferProbeReceipt
+  probe hash, result hash, no-leakage bit, pass/fail receipt
+
+ValidityJudgeReport
+  construct validity, leakage risk, evaluator tamper risk, shortcut risk, and generalization gap
+
+MetacognitiveTrace
+  uncertainty, missing evidence, assumptions, and abstain-or-repair decisions
+
+ComputeLearningGainLedger
+  GPU minutes, dollars, tokens, eval delta, held-out delta, mastery delta, and continue/stop decision
+```
+
+The scheduler selects batches by expected mastery gain per GPU-minute, not by row order, recency, popularity, or loss alone. A low-loss sample can be skipped if it teaches nothing new. A difficult sample can be delayed if prerequisites are missing. A promising sample is denied if the transfer probe leaks, the evaluator can be gamed, or the improvement appears only on training-shaped tasks.
+
+The hard rule is:
+
+```text
+no additional compute without positive held-out transfer gain
+and positive mastery gain per GPU-minute
+under a green validity report
+```
+
+This is the resource-limited version of the project. Model-side efficiency compresses the inference path; the Didactica layer compresses the curriculum. It tries to make a smaller model learn like a careful apprentice: not by seeing everything, but by being repeatedly tested on the right thing, at the right difficulty, with proof that the lesson transfers.
+
+## 8. User-Owned Memory
 
 Sinabro memory is not a hidden prompt cache. It is a user-owned asset.
 
@@ -197,31 +257,31 @@ The memory layer is designed to give users five properties:
 4. Deletion semantics override retrieval and training.
 5. Replay can prove what was known at the time of a decision.
 
-## 8. Provider, Tool, and Command Boundaries
+## 9. Provider, Tool, and Command Boundaries
 
 Sinabro uses external systems without surrendering its safety model.
 
-### 8.1 LLM Provider Abstraction
+### 9.1 LLM Provider Abstraction
 
 OpenAI, Anthropic, Gemini, local Naite, and vLLM endpoints are called through one provider interface. Each route records model identity, route decision, cost estimate, latency bucket, prompt redaction hash, output hash, and fallback policy.
 
 No silent fallback is allowed. If the route changes from local Naite to a hosted provider, or from one hosted provider to another, the user-visible route state changes and approval may be required.
 
-### 8.2 Tool Adapter Abstraction
+### 9.2 Tool Adapter Abstraction
 
 Python tools, MCP servers, CLI binaries, HTTP/FastAPI services, and WASM skills normalize into a common `ToolCall` and `ToolResult`. Capability diff, sandbox tier, budget, approval, revocation, and evidence records are enforced before execution.
 
 This prevents the model from bypassing safety by choosing a convenient tool surface.
 
-### 8.3 Message and Command Envelope
+### 9.3 Message and Command Envelope
 
 CLI, TUI, Telegram, future mobile apps, and APIs share the same command semantics. `/kill`, `/approve`, `task resume`, `budget cap`, and `provider route` must mean the same thing everywhere.
 
-### 8.4 Evidence and Trace Layer
+### 9.4 Evidence and Trace Layer
 
 Provider choice, tool execution, cost, latency, output hashes, failures, and approval receipts are recorded. Without this layer, a model or tool could spend money, mutate files, or change routes without leaving a reproducible trail.
 
-## 9. Trajectory Health and Evidence-Backed Hints
+## 10. Trajectory Health and Evidence-Backed Hints
 
 Long-running agents often fail before they produce a bad final answer. They loop, skip verification, contradict earlier evidence, drift off task, compress away the important failure, or continue spending tokens after the task is stuck.
 
@@ -271,7 +331,7 @@ redaction_class
 
 If a prior lesson cannot point to evidence, it is not injected as operational truth.
 
-## 10. Skills
+## 11. Skills
 
 The initial skill system is adoption-first. It focuses on discovery, inspection, recommendation, dry-run, installation, provenance, compatibility, and verified use.
 
@@ -297,7 +357,7 @@ Search uses progressive disclosure. The first result is a compact card: name, de
 
 Skill execution requires package signatures, compatibility checks, malicious-fixture tests, sandbox evidence, capability diff, dry-run, explicit confirmation, and install receipts.
 
-## 11. Web Research and Source Truth
+## 12. Web Research and Source Truth
 
 Web research is a tool action, not ambient knowledge. A fetched source becomes usable only when it carries:
 
@@ -311,7 +371,7 @@ Web research is a tool action, not ambient knowledge. A fetched source becomes u
 
 Web content can guide an answer. It does not automatically become Naite training data. Public training candidates require explicit rights checks, redaction, and user approval.
 
-## 12. Wallet, Gas, and Chain Safety
+## 13. Wallet, Gas, and Chain Safety
 
 The gasless user experience is designed around a keyless open-source client and a policy-gated Gas Station. Sponsor keys do not appear in the repository, binary, container image, or examples.
 
@@ -331,11 +391,11 @@ Core invariants include:
 
 Gas sponsorship is separated from memory ownership and skill usage. A sponsor can pay for policy-limited operations. It cannot become the user's memory owner.
 
-## 13. Speed Law
+## 14. Speed Law
 
 Sinaite follows a dual compression speed law.
 
-### 13.1 Model-Side Efficiency
+### 14.1 Model-Side Efficiency
 
 Model-side efficiency reduces the cost of inference itself:
 
@@ -348,7 +408,7 @@ Model-side efficiency reduces the cost of inference itself:
 
 These are route-visible. A faster route that hides quality regression is not stable.
 
-### 13.2 Serving-Side Efficiency
+### 14.2 Serving-Side Efficiency
 
 Serving-side efficiency reduces system overhead around the model:
 
@@ -364,9 +424,11 @@ Stable routes must report TTFT, TPOT, stream gap, queue time, prefill time, deco
 
 Full operations are supported, but only explicitly. `--full`, `--deep`, `export`, `replay`, and `audit` are product features. They run as budgeted, killable, resumable background jobs with progress, paged output, and evidence. They are not allowed to block the interactive hot path.
 
-## 14. Training Naite
+## 15. Training Naite
 
-Naite training begins only after dataset and rights gates produce a valid unlock packet. The first training track uses a 14B coding-model lineage with QLoRA/LoRA-style fine-tuning on A100-class hardware. Reinforcement-style methods such as GRPO, MURPHY, and FGO remain locked until SFT smoke tests and evaluations pass.
+Naite training begins only after dataset and rights gates produce a valid unlock packet. The first training track uses a license-permissive 14B coding base with QLoRA/LoRA-style fine-tuning on A100-class hardware. The exact base identity, license, tokenizer, chat template, and trainability proof must be disclosed in the Stage G model card before any adapter is promoted. Reinforcement-style methods such as GRPO, MURPHY, and FGO remain locked until SFT smoke tests and evaluations pass.
+
+The first curriculum is controlled by the Naite Didactica Engine. A full SFT run must carry `MasteryVector`, `SpacedRecallQueue`, `DesirableDifficultyMixer`, `TransferProbe`, `TransferProbeReceipt`, `ValidityJudgeReport`, `MetacognitiveTrace`, and `ComputeLearningGainLedger` artifacts. Loss curves are weak signals. Promotion requires held-out transfer gain, mastery gain per GPU-minute, and validity checks that rule out leakage, shortcut learning, and evaluator gaming.
 
 Promotion is not based on loss alone. A candidate must preserve or improve:
 
@@ -380,10 +442,11 @@ Promotion is not based on loss alone. A candidate must preserve or improve:
 - Held-out security and optimization tasks.
 - Trajectory-health behavior.
 - Token/cost/pass/latency A/B scorecards.
+- Didactica artifacts: mastery, spacing, transfer, validity, metacognitive uncertainty, and compute-learning-gain.
 
 Infrastructure failures such as OOM, timeout, and provider failure are masked from model reward. They are operational signals, not model-success labels.
 
-## 15. Evaluation Protocol
+## 16. Evaluation Protocol
 
 Evaluation covers model quality, agent behavior, system safety, and serving performance.
 
@@ -398,13 +461,14 @@ Evaluation covers model quality, agent behavior, system safety, and serving perf
 | Router | no silent fallback, route receipts, cost and quality scorecards |
 | Gas | allowlist, dry-run, quotas, gas caps, coin leases, burn caps |
 | Dataset | PII0, secret0, S1/S2 split, reward firewall, dependency audit |
+| Curriculum | mastery vector, spaced recall, transfer probe receipt, validity report, compute-learning-gain ledger |
 | Korean | technical parity with equivalent English prompts |
 | Serving | TTFT, TPOT, prefill/decode, prefix/KV hit-rate, allocation, VRAM, quality |
 | Trajectory | loop, drift, verification skip, contradiction, compression failure |
 
 The strongest evaluation target is not memorization of the project itself. The system must improve on held-out Rust, Move, gas, security, and Korean-language technical tasks without relaxing safety gates.
 
-## 16. Open-Source Controls
+## 17. Open-Source Controls
 
 Sinaite is open-source by design and conservative by default.
 
@@ -439,11 +503,13 @@ evidence_backed_hints = true
 tool_output_compression = "typed_by_output_kind"
 speculative_route = "visible"
 quantized_serving = "canary_only"
+didactica_engine = true
+compute_learning_gain_gate = true
 ```
 
 The safety kernel is not optional. Secret redaction, capability diffs, no silent fallback, no auto-merge, wallet preview, gas drain invariants, mainnet approval, and source-evidence requirements remain enforced.
 
-## 17. Roadmap
+## 18. Roadmap
 
 The staged roadmap is designed so each stage leaves a working artifact and an evidence bundle.
 
@@ -451,35 +517,130 @@ The staged roadmap is designed so each stage leaves a working artifact and an ev
 - **Stage B:** signed memory chunks, Walrus testnet, Sui memory roots, replay proof.
 - **Stage C:** GA hardening, gas trace harness, mainnet gate, key isolation.
 - **Stage D:** skill runtime, open registry, provenance, install receipts, memory intelligence.
-- **Stage E:** AtomDiet builder, redaction, rights checks, reward firewall, training unlock.
+- **Stage E:** AtomDiet builder, redaction, rights checks, reward firewall, DidacticConceptMap, training unlock.
 - **Stage F:** CLI cockpit, provider and tool adapters, web, skill, memory, wallet, gas, train, eval, and feature controls.
-- **Stage G:** first Naite SFT pass and evaluation on A100.
+- **Stage G:** first Naite SFT pass and evaluation on A100, controlled by MasteryVector, spaced recall, transfer probes, validity reports, and compute-learning-gain ledgers.
 - **Stage H:** vLLM serving, local model router, speed law, no-silent-fallback proof, CLI/Telegram sync.
 - **Stage I:** read-only mainnet measurement for gas, cycle, and security telemetry.
 - **Stage J:** open-source readiness, SDKs, public docs, contributor dry-run, review queue.
 - **Stage K:** larger-model promotion after controlled self-improvement is measured under gates.
 
-## 18. Expected Advantages
+## 19. Expected Advantages
 
 Sinaite compounds in ways a plain chat interface does not.
 
-The agent keeps state outside the model. Memory, skills, evidence, and approval records survive provider changes and model upgrades. The training system learns from complete work trajectories instead of isolated answers. The safety model is enforced by runtime policy rather than prompt text. External frontier models can still be used, but their outputs pass through the same trace, privacy, and approval boundaries.
+The agent keeps state outside the model. Memory, skills, evidence, and approval records survive provider changes and model upgrades. The training system learns from complete work trajectories instead of isolated answers. The curriculum system decides what is worth training next instead of burning compute in dataset order. The safety model is enforced by runtime policy rather than prompt text. External frontier models can still be used, but their outputs pass through the same trace, privacy, and approval boundaries.
 
 The system is broader than a Web3 assistant and more specific than a general chatbot. Its first deep specialization is Rust, Move, Sui, and storage-backed memory, but the underlying loop is a general coding loop.
 
-## 19. Limitations
+## 20. Related Work
+
+SWE-agent shows that agent-computer interfaces matter: the model performs better when the edit, test, and shell environment is shaped for software engineering rather than ordinary chat. Sinaite adopts that systems view, but closes a different loop. The interface is not only a way to solve a task; it is also a way to produce a typed trajectory with command manifests, gate results, redaction reports, reward labels, and replayable evidence. In short, SWE-agent focuses on the agent-computer interface; Sinaite makes the trajectory a first-class training and audit artifact.
+
+Voyager demonstrates that an agent can accumulate reusable skills through open-ended exploration. Sinaite shares the idea that capability should compound outside the model weights, but its skill system is stricter and less autonomous by default. Skills carry provenance, capability diffs, sandbox tiers, malicious-fixture checks, install receipts, and explicit user approval. The goal is not only to discover useful behaviors, but to make every reusable behavior inspectable, revocable, and safe to compose in a local developer environment.
+
+MemGPT frames memory as an operating-system problem for LLMs: limited context requires explicit memory management. Sinaite agrees with that premise, but changes the ownership boundary. Memory is not just a hidden context-management layer for the model. It is a user-owned asset with signed chunks, content digests, storage receipts, Sui memory roots, audit logs, deletion semantics, export/import, and deterministic replay. The agent may use memory, but it does not own memory.
+
+Hermes 3 is relevant because it treats instruction following, tool use, and open-model behavior as an integrated training problem. Sinaite is narrower at first: Rust, Move, Sui, storage-backed memory, and coding trajectories. The intended difference is not breadth at launch, but trace quality. Naite training data is allowed to enter the pipeline only after evidence gates, privacy checks, reward firewalls, and held-out evaluation rules decide that the trajectory is learnable.
+
+## 21. Limitations
 
 This report describes a staged design, not a completed production deployment.
 
-Naite is not assumed to outperform frontier models at launch. Walrus/Sui memory ownership, Gas Station operation, vLLM serving, and mainnet measurement require implementation evidence before public performance claims. Self-improvement does not imply permission escalation. A better model does not get broader authority.
+Naite is not assumed to outperform frontier models at launch. The Didactica Engine is a training-control design until its ledgers show measured held-out transfer gains. Walrus/Sui memory ownership, Gas Station operation, vLLM serving, and mainnet measurement require implementation evidence before public performance claims. Self-improvement does not imply permission escalation. A better model does not get broader authority.
 
 Public training contributions require opt-in consent, redaction, source rights, provider-policy compliance, and provenance. Some evaluation tools may be unavailable in a given local environment; tool absence must be recorded as `not_verified`, not as success.
 
-## 20. Conclusion
+## 22. Conclusion
 
 Sinaite is built around one constraint: improvement must leave evidence.
 
-Sinabro is the agent layer that owns memory, tools, approvals, routing, and traces. Naite is the model trained from the agent's verified work. The long-term goal is not a louder assistant. It is a quieter and more efficient system where every token, tool call, memory write, and model update can be measured against evidence.
+Sinabro is the agent layer that owns memory, tools, approvals, routing, and traces. Naite is the model trained from the agent's verified work under a curriculum that spends compute only when learning gain is measurable. The long-term goal is not a louder assistant. It is a quieter and more efficient system where every token, tool call, memory write, and model update can be measured against evidence.
+
+## Appendix A. Mini Atom Sidecar Example
+
+The following is a compressed example of the kind of atom that enters the AtomDiet pipeline. It is illustrative rather than a claim about a specific released build.
+
+```text
+atom_id: A.0.3
+canonical_out: RuntimeSupervisor<CAP>
+target_file: prototype/crates/a-core/src/runtime.rs
+reuse: RedactionClass from atom A.0.2
+gate: G-CORE + G-GREP-PANIC
+```
+
+The corresponding sidecar records are small, typed, and evidence-oriented:
+
+```jsonl
+input_context.jsonl
+{"source":"MNEMOS_ATOM_PLAN.md#A.0.3","extract":"RuntimeSupervisor with fixed capacity, typed task ids, drain report, cancel/release results","evidence_hash":"h_ctx_01"}
+{"source":"prototype/crates/a-core/src/redaction.rs","extract":"Reuse RedactionClass; do not redefine a privacy label enum","evidence_hash":"h_ctx_02"}
+
+action_trace.jsonl
+{"action":"read","path":"prototype/crates/a-core/src/lib.rs","result":"module boundary found"}
+{"action":"edit","path":"prototype/crates/a-core/src/runtime.rs","result":"added RuntimeSupervisor, RuntimeTaskId, Attempt, lease/report/drain types"}
+{"action":"edit","path":"prototype/crates/a-core/src/lib.rs","result":"re-exported runtime module"}
+
+command_manifest.json
+{"commands":[{"cmd":"cargo fmt --all --check","exit":0},{"cmd":"cargo clippy --workspace --all-targets -- -D warnings","exit":0},{"cmd":"cargo test --workspace runtime","exit":0}]}
+
+terminal_redacted.jsonl
+{"cmd":"cargo test --workspace runtime","summary":"runtime supervisor tests passed","secret_hits":0,"raw_output_hash":"h_term_01"}
+
+env_lock.json
+{"os":"macOS arm64","rustc":"1.94.1","cargo":"1.94.1","sui":"not_used","walrus":"not_used","miri":"not_run_tool_absent"}
+
+artifact_hashes.json
+{"prototype/crates/a-core/src/runtime.rs":"h_runtime_rs","prototype/crates/a-core/src/lib.rs":"h_lib_rs","code_diff.patch":"h_patch"}
+
+code_diff.patch
+{"summary":"Added fixed-capacity runtime supervisor and public re-exports","patch_hash":"h_patch"}
+
+failed_attempts.jsonl
+{"attempt":"miri","status":"not_run","reason":"tool unavailable in local environment; not claimed as pass"}
+
+no_op_decisions.jsonl
+{"decision":"do_not_spawn_tokio_tasks","reason":"task spawning belongs to a later atom"}
+{"decision":"do_not_add_anyhow","reason":"library crate error types stay typed"}
+
+test_results.json
+{"cargo_fmt":"pass","cargo_clippy":"pass","cargo_test":"pass","miri":"not_verified"}
+
+gate_results.json
+{"G-CORE":"pass","G-GREP-PANIC":"pass","G-MIRI":"not_verified_tool_absent"}
+
+review_5pack.json
+{"perf":"fixed-capacity state; no unbounded queue","security":"no secrets, no network","chain":"not applicable","agent_token":"sidecar concise","devex":"typed result enums"}
+
+deny_audit.json
+{"new_dependencies":[],"banned_error_crates":[],"license_findings":[],"status":"pass"}
+
+redteam_decision.json
+{"panic_surface":"none in production path","secret_surface":"none","live_side_effect":"none","decision":"green"}
+
+human_review.jsonl
+{"instruction":"implement one atom only; reuse canonical RedactionClass","interpretation":"scope locked before edit"}
+
+approval_events.jsonl
+{"event":"no_live_action_requested","approval_required":false}
+
+privacy_report.json
+{"secrets":0,"provider_bodies":0,"wallet_material":0,"private_memory":0}
+
+sft_chat.jsonl
+{"user":"Implement atom A.0.3 runtime supervisor using the existing redaction type.","assistant":"I will reuse RedactionClass, add RuntimeSupervisor, run fmt/clippy/test, and emit sidecar evidence."}
+
+preference_pairs.jsonl
+{"rejected":"Define a new PrivacyClass enum and skip miri explanation.","chosen":"Reuse RedactionClass and mark miri as not_verified_tool_absent."}
+
+reward_labels.json
+{"execution_correctness":1.0,"evidence_integrity":1.0,"scope_reuse":1.0,"security":1.0,"perf":0.8,"reward_allowed":true}
+
+eval_summary.json
+{"atom_status":"implemented_waiting_for_independent_verification","promotion":"no_training_promotion_until_session_2"}
+```
+
+This is the unit Naite is meant to learn from: not just the final code, but the context, constraint, failed option, command evidence, security review, and reward boundary.
 
 ## References
 
@@ -488,7 +649,10 @@ Sinabro is the agent layer that owns memory, tools, approvals, routing, and trac
 - DeepSeek-AI. "DeepSeekMoE: Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models." arXiv:2401.06066, 2024. https://arxiv.org/abs/2401.06066
 - DeepSeek-AI. "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models." arXiv:2402.03300, 2024. https://arxiv.org/abs/2402.03300
 - DeepSeek-AI. "DeepSeek-V3 Technical Report." arXiv:2412.19437, 2024. https://arxiv.org/abs/2412.19437
-- Google Research. "TurboQuant: Redefining AI efficiency with extreme compression." 2026. https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/
+- Bloom, Benjamin S. "Learning for Mastery." Evaluation Comment, 1968.
+- Bjork, Robert A. "Memory and metamemory considerations in the training of human beings." Metacognition: Knowing about Knowing, 1994.
+- Roediger, Henry L., and Jeffrey D. Karpicke. "Test-enhanced learning: Taking memory tests improves long-term retention." Psychological Science, 2006.
+- Google Research. "TurboQuant: Redefining AI efficiency with extreme compression." March 24, 2026. https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/
 - Kwon et al. "Efficient Memory Management for Large Language Model Serving with PagedAttention." arXiv:2309.06180, 2023. https://arxiv.org/abs/2309.06180
 - Qin et al. "Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving." arXiv:2407.00079, 2024. https://arxiv.org/abs/2407.00079
 - Zhong et al. "DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving." arXiv:2401.09670, 2024. https://arxiv.org/abs/2401.09670
